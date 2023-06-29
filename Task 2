@@ -1,0 +1,77 @@
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
+public class ExpressionEvaluator {
+    private static final String API_URL = "https://api.matheval.io/v1/";
+
+    public static void main(String[] args) {
+        List<String> expressions = new ArrayList<>();
+        expressions.add("2 * 4 * 4");
+        expressions.add("5 / (7 - 5)");
+        expressions.add("sqrt(5^2 - 4^2)");
+        expressions.add("sqrt(-3^2 - 4^2)");
+
+        evaluateExpressions(expressions);
+    }
+
+    public static void evaluateExpressions(List<String> expressions) {
+        HttpClient httpClient = HttpClient.newHttpClient();
+
+        // Split expressions into chunks based on rate limit (e.g., 50 expressions per second)
+        List<List<String>> expressionChunks = splitIntoChunks(expressions, 50);
+
+        for (List<String> chunk : expressionChunks) {
+            List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+            for (String expression : chunk) {
+                CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                    try {
+                        String encodedExpression = URLEncoder.encode(expression, "UTF-8");
+                        URI uri = URI.create(API_URL + encodedExpression);
+
+                        HttpRequest request = HttpRequest.newBuilder()
+                                .uri(uri)
+                                .build();
+
+                        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                        System.out.println(expression + " => " + response.body());
+                    } catch (Exception e) {
+                        System.out.println("Error evaluating expression: " + expression);
+                    }
+                });
+
+                futures.add(future);
+            }
+
+            // Wait for all expressions in the chunk to be evaluated
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+            
+            // Sleep for 1 second to comply with rate limit
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static List<List<String>> splitIntoChunks(List<String> expressions, int chunkSize) {
+        List<List<String>> chunks = new ArrayList<>();
+        int index = 0;
+        int size = expressions.size();
+
+        while (index < size) {
+            chunks.add(expressions.subList(index, Math.min(index + chunkSize, size)));
+            index += chunkSize;
+        }
+
+        return chunks;
+    }
+}

@@ -1,0 +1,52 @@
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
+
+public class EventSimulation {
+    public static void main(String[] args) {
+        int totalOccurrences = 1000;
+        Map<Integer, Integer> eventResults = simulateEvent(new int[][]{{1, 10}, {2, 30}, {3, 15}, {4, 15}, {5, 30}, {6, 0}}, totalOccurrences);
+
+        for (Map.Entry<Integer, Integer> entry : eventResults.entrySet()) {
+            int outcome = entry.getKey();
+            int count = entry.getValue();
+            System.out.println("Outcome " + outcome + " appeared " + count + " times.");
+        }
+    }
+
+    public static Map<Integer, Integer> simulateEvent(int[][] outcomes, int totalOccurrences) {
+        int numOutcomes = outcomes.length;
+        Map<Integer, Integer> eventResults = new HashMap<>();
+
+        for (int i = 0; i < numOutcomes; i++) {
+            eventResults.put(outcomes[i][0], 0);
+        }
+
+        Random random = new Random();
+        for (int i = 0; i < totalOccurrences; i++) {
+            int randomValue = random.nextInt(getTotalProbability(outcomes)) + 1;
+            int cumulativeProb = 0;
+
+            for (int j = 0; j < numOutcomes; j++) {
+                int outcomeValue = outcomes[j][0];
+                int outcomeProb = outcomes[j][1];
+                cumulativeProb += outcomeProb;
+
+                if (randomValue <= cumulativeProb) {
+                    eventResults.put(outcomeValue, eventResults.get(outcomeValue) + 1);
+                    break;
+                }
+            }
+        }
+
+        return eventResults;
+    }
+
+    private static int getTotalProbability(int[][] outcomes) {
+        int totalProb = 0;
+        for (int[] outcome : outcomes) {
+            totalProb += outcome[1];
+        }
+        return totalProb;
+    }
+}
